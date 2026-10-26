@@ -1,0 +1,140 @@
+# XcodeGen project spec for the MoniVitals iOS app.
+#
+# Generate the Xcode project with:
+#   brew install xcodegen
+#   cd ios && xcodegen generate && open MoniVitals.xcodeproj
+#
+# This mirrors the web app (web/) and shares the algorithm/protocol specs in docs/.
+# NOT a medical device — research / educational tool only.
+
+name: MoniVitals
+options:
+  bundleIdPrefix: com.monivitals
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: NXS4B9HC6S
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0.3"
+    CURRENT_PROJECT_VERSION: "3"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GENERATE_INFOPLIST_FILE: NO
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+targets:
+  MoniVitals:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: MoniVitals
+    configFiles:
+      # Debug-only secrets (gitignored — keep the file present locally, even if
+      # empty): APP_CHECK_DEBUG_TOKEN feeds the AppCheckDebugToken Info.plist
+      # key below. Release has no config file, so the variable expands to ""
+      # and no debug token is ever embedded in Release builds.
+      Debug: Config/AppCheckDebug.xcconfig
+    info:
+      path: MoniVitals/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: MoniVitals
+        CFBundleIconName: AppIcon
+        CFBundleShortVersionString: "1.0.3"
+        CFBundleVersion: "3"
+        LSRequiresIPhoneOS: true
+        # Health & Fitness category for the App Store.
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
+        # Only standard HTTPS (Firebase REST) — exempt from export compliance,
+        # so App Store Connect never prompts for the encryption questionnaire.
+        ITSAppUsesNonExemptEncryption: false
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen:
+          UIColorName: ""
+          UIImageRespectsSafeAreaInsets: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # iPad is a targeted device (TARGETED_DEVICE_FAMILY 1,2). Apple validation
+        # requires all four orientations for iPad unless UIRequiresFullScreen opts out.
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # App requires full screen (no iPad Split View / Slide Over). This opts out
+        # of multitasking, so the restricted orientation set above is allowed and
+        # validation no longer demands all four orientations.
+        UIRequiresFullScreen: true
+        UIStatusBarStyle: UIStatusBarStyleDefault
+        # MoniVitals uses the rear camera + torch to read your pulse from your
+        # fingertip, and motion sensing to tell how still you're holding the phone.
+        NSCameraUsageDescription: "MoniVitals uses the camera so you can measure your heart rate from your fingertip."
+        NSMotionUsageDescription: "MoniVitals uses motion sensing to tell how still you're holding your phone while measuring."
+        # Bluetooth is used only to connect to your optional MoniVitals sensor and
+        # stream your pulse from it — MoniVitals never scans for anything else.
+        NSBluetoothAlwaysUsageDescription: "MoniVitals uses Bluetooth to connect to your MoniVitals device and read your pulse from it."
+        # Firebase App Check debug token, injected from Config/AppCheckDebug.xcconfig
+        # in Debug builds only ($(APP_CHECK_DEBUG_TOKEN) is undefined in Release,
+        # so this expands to an empty string there). Read by AppCheckService.
+        AppCheckDebugToken: "$(APP_CHECK_DEBUG_TOKEN)"
+        # OAuth redirect scheme for "Continue with Google" (ASWebAuthenticationSession).
+        # Must equal the REVERSED_CLIENT_ID in GoogleService-Info.plist.
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.monivitals.app.google
+            CFBundleURLSchemes:
+              - com.googleusercontent.apps.981916297971-7setfeotapb8coj48uf4f4tok006l80p
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.monivitals.random
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        CODE_SIGN_ENTITLEMENTS: MoniVitals/MoniVitals.entitlements
+
+  MoniVitalsTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: MoniVitalsTests
+    dependencies:
+      - target: MoniVitals
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.monivitals.random.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  MoniVitalsUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: MoniVitalsUITests
+    dependencies:
+      - target: MoniVitals
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.monivitals.random.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: MoniVitals
+
+schemes:
+  MoniVitals:
+    build:
+      targets:
+        MoniVitals: all
+        MoniVitalsTests: [test]
+        MoniVitalsUITests: [test]
+    test:
+      targets:
+        - MoniVitalsTests
+        - MoniVitalsUITests
+      gatherCoverageData: true
